@@ -1,62 +1,44 @@
-﻿using Microsoft.Maui.Controls;
+using CollaborativeWhiteboard.ClientApp.Canvas;
+using CollaborativeWhiteboard.ClientApp.Models;
+using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
 using System.Collections.Generic;
 
-namespace CollaborativeWhiteboard.ClientApp.Views
+namespace CollaborativeWhiteboard.ClientApp.Views;
+
+public partial class MainPage : ContentPage
 {
-    public partial class MainPage : ContentPage
+    private readonly List<DrawStroke> _strokes = new();
+    private DrawStroke? _activeStroke;
+
+    public MainPage()
     {
-        private readonly List<PointF> _points = new();
+        InitializeComponent();
 
-        public MainPage()
-        {
-            InitializeComponent();
-
-            // Set drawable and event handlers
-            DrawingCanvas.Drawable = new DrawableGraphics(_points);
-            DrawingCanvas.StartInteraction += OnStartInteraction;
-            DrawingCanvas.DragInteraction += OnDragInteraction;
-            DrawingCanvas.EndInteraction += OnEndInteraction;
-        }
-
-        private void OnStartInteraction(object sender, TouchEventArgs e)
-        {
-            _points.Clear();
-            _points.Add(e.Touches[0]);
-            DrawingCanvas.Invalidate();
-        }
-
-        private void OnDragInteraction(object sender, TouchEventArgs e)
-        {
-            _points.Add(e.Touches[0]);
-            DrawingCanvas.Invalidate();
-        }
-
-        private void OnEndInteraction(object sender, TouchEventArgs e)
-        {
-            _points.Add(e.Touches[0]);
-            DrawingCanvas.Invalidate();
-        }
+        DrawingCanvas.Drawable = new DrawableGraphics(_strokes);
+        DrawingCanvas.StartInteraction += OnStartInteraction;
+        DrawingCanvas.DragInteraction += OnDragInteraction;
+        DrawingCanvas.EndInteraction += OnEndInteraction;
     }
 
-    public class DrawableGraphics : IDrawable
+    private void OnStartInteraction(object sender, TouchEventArgs e)
     {
-        private readonly List<PointF> _points;
+        _activeStroke = new DrawStroke();
+        _activeStroke.Points.Add(e.Touches[0]);
+        _strokes.Add(_activeStroke);
+        DrawingCanvas.Invalidate();
+    }
 
-        public DrawableGraphics(List<PointF> points)
-        {
-            _points = points;
-        }
+    private void OnDragInteraction(object sender, TouchEventArgs e)
+    {
+        _activeStroke?.Points.Add(e.Touches[0]);
+        DrawingCanvas.Invalidate();
+    }
 
-        public void Draw(ICanvas canvas, RectF dirtyRect)
-        {
-            canvas.StrokeColor = Colors.Black;
-            canvas.StrokeSize = 2;
-
-            for (int i = 0; i < _points.Count - 1; i++)
-            {
-                canvas.DrawLine(_points[i], _points[i + 1]);
-            }
-        }
+    private void OnEndInteraction(object sender, TouchEventArgs e)
+    {
+        _activeStroke?.Points.Add(e.Touches[0]);
+        _activeStroke = null;
+        DrawingCanvas.Invalidate();
     }
 }
