@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on tags like v0.1.0, v1.0.0, etc.
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Run tests
+  # ---------------------------------------------------------------------------
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Run server tests
+        run: dotnet test tests/CollaborativeWhiteboard.Server.Test --configuration Release
+
+      - name: Run client tests
+        run: dotnet test tests/CollaborativeWhiteboard.ClientApp.Test --configuration Release
+
+  # ---------------------------------------------------------------------------
+  # Build and publish the server
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build Server
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish server
+        run: |
+          dotnet publish src/CollaborativeWhiteboard.Server \
+            --configuration Release \
+            --output publish/server \
+            --runtime linux-x64 \
+            --self-contained false
+
+      - name: Archive server publish
+        run: |
+          cd publish
+          zip -r ../collaborative-whiteboard-server-${{ github.ref_name }}-linux-x64.zip server/
+          cd ..
+          sha256sum collaborative-whiteboard-server-${{ github.ref_name }}-linux-x64.zip > SHA256SUMS.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-linux-x64
+          path: |
+            collaborative-whiteboard-server-${{ github.ref_name }}-linux-x64.zip
+            SHA256SUMS.txt
+
+  # ---------------------------------------------------------------------------
+  # Create GitHub Release and attach artifacts
+  # ---------------------------------------------------------------------------
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/*.zip
+            artifacts/SHA256SUMS.txt
