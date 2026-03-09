@@ -6,13 +6,28 @@ Items are grouped by theme and ordered roughly by priority within each section.
 
 ---
 
+## Datastore Architecture
+
+Two stores serve distinct roles and are not interchangeable:
+
+| Store | Role | Packages |
+|---|---|---|
+| **PostgreSQL** | Durable, relational data — users, auth tokens, session metadata, persisted stroke history | `Npgsql.EntityFrameworkCore.PostgreSQL` |
+| **Redis** | High-frequency ephemeral state — live stroke buffers, user presence, cursor positions, SignalR backplane | `StackExchange.Redis`, `Microsoft.AspNetCore.SignalR.StackExchangeRedis` |
+
+SQLite is not used. It cannot handle concurrent high-frequency stroke writes and does not support horizontal scaling.
+
+In `docker-compose.yml`, run `postgres` and `redis` as sidecar services alongside the ASP.NET Core server.
+
+---
+
 ## Authentication & Identity
 
 **Goal:** Replace anonymous user IDs with real accounts so sessions are attributable, auditable, and secure.
 
 ### Plan
 
-1. **ASP.NET Core Identity + SQLite** — Add `Microsoft.AspNetCore.Identity.EntityFrameworkCore` and `Microsoft.EntityFrameworkCore.Sqlite` to the server. Create `AppUser : IdentityUser` and `AppDbContext : IdentityDbContext<AppUser>`.
+1. **ASP.NET Core Identity + PostgreSQL** — Add `Microsoft.AspNetCore.Identity.EntityFrameworkCore` and `Npgsql.EntityFrameworkCore.PostgreSQL` to the server. Create `AppUser : IdentityUser` and `AppDbContext : IdentityDbContext<AppUser>`.
 2. **JWT Bearer tokens** — Issue short-lived JWTs (15 min access + 7-day refresh) from `AuthController` (`POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`).
 3. **Protect the hub** — Add `[Authorize]` to `DrawingHub`. Pass the token via the SignalR `AccessTokenProvider` query-string hook.
 4. **MAUI `AuthService`** — Wraps register/login HTTP calls, stores tokens in `SecureStorage`, exposes `GetAccessTokenAsync()` for auto-refresh.
@@ -20,7 +35,7 @@ Items are grouped by theme and ordered roughly by priority within each section.
 6. **Token lifecycle** — Intercept 401 responses in `DrawingService`, call refresh, retry once; on failure navigate back to login.
 
 ### Files affected (estimated)
-- `src/CollaborativeWhiteboard.Server/` — `AppDbContext`, `AppUser`, `AuthController`, `DrawingHub`, `Program.cs`, `appsettings.json`
+- `src/CollaborativeWhiteboard.Server/` — `AppDbContext`, `AppUser`, `AuthController`, `DrawingHub`, `Program.cs`, `appsettings.json`, `docker-compose.yml`
 - `src/CollaborativeWhiteboard.Core/` — `AuthService`, `IAuthService`
 - `src/CollaborativeWhiteboard.ClientApp/` — `LoginPage`, `LoginPageViewModel`, `AppShell.xaml`, `MauiProgram.cs`
 - `tests/` — `AuthControllerTests`, `AuthServiceTests`
@@ -43,7 +58,7 @@ Items are grouped by theme and ordered roughly by priority within each section.
 
 | Store | Mechanism |
 |---|---|
-| SQLite user database (server) | **SQLCipher** (`Microsoft.EntityFrameworkCore.Sqlite` + `SQLitePCLRaw.bundle_sqlcipher`) — encrypts the entire database file with a passphrase stored in an environment variable / secret manager. |
+| PostgreSQL user database (server) | **Transparent Data Encryption** via the OS/cloud provider (e.g., Azure Database for PostgreSQL encrypted-at-rest by default), plus `pg_crypto` for sensitive column-level encryption. Connection string stored in an environment variable / secret manager. |
 | Refresh tokens (server) | Store only a **bcrypt hash** of the token, not the raw value, so a DB leak does not expose live tokens. |
 | Access token (MAUI client) | **`SecureStorage`** — on iOS uses Keychain, on Android uses EncryptedSharedPreferences / Android Keystore, on Windows uses DPAPI. Never store in plain `Preferences`. |
 | Drawing / chat history (future) | If persisted server-side, encrypt sensitive fields at the application layer (AES-256-GCM) before writing to the database, with keys managed by a KMS or environment secret. |
@@ -52,7 +67,7 @@ Items are grouped by theme and ordered roughly by priority within each section.
 
 1. Configure HTTPS redirection and HSTS in `Program.cs`.
 2. Update `Dockerfile` to expose port 443 and mount a TLS certificate.
-3. Add `appsettings.Production.json` with `ConnectionStrings__DefaultConnection` referencing a SQLCipher key from an env var.
+3. Add `appsettings.Production.json` with `ConnectionStrings__DefaultConnection` referencing the PostgreSQL connection string from an env var / secret manager.
 4. In `AuthService`, store the refresh token hash with `BCrypt.Net-Next`.
 5. Update `AuthService` on the MAUI side to write all tokens exclusively through `SecureStorage`.
 6. Document the TLS setup in `README.md` under a "Production Deployment" section.
@@ -69,7 +84,7 @@ Items are grouped by theme and ordered roughly by priority within each section.
 
 ## Collaborative State
 
-- **Canvas sync for late joiners** — Server maintains an in-memory (or Redis-backed) list of `DrawStroke` events per session. New clients receive the full history on connect via `SendAsync("SyncCanvas", strokes)`.
+- **Canvas sync for late joiners** — Server maintains a **Redis-backed** list of `DrawStroke` events per session (Redis List per session key, with a configurable TTL). New clients receive the full history on connect via `SendAsync("SyncCanvas", strokes)`. Use `StackExchange.Redis` and `Microsoft.AspNetCore.SignalR.StackExchangeRedis` — the latter also provides the SignalR backplane for multi-instance deployments.
 - **User presence** — Broadcast `UserJoined` / `UserLeft` events on `OnConnectedAsync` / `OnDisconnectedAsync`. Show an avatar list or name list in the toolbar.
 - **Cursor sharing** — Broadcast pointer position at a throttled rate (e.g., 30 fps) so collaborators see each other's cursors in real time.
 
@@ -89,7 +104,7 @@ Items are grouped by theme and ordered roughly by priority within each section.
 
 - **PNG / SVG export** — Render the current canvas to a file from the client. MAUI `GraphicsView` can save to a `Stream`; SVG requires manual serialization of strokes.
 - **Session save / load** — Serialize the full stroke list to JSON and allow users to save and reload named sessions.
-- **Server-side session storage** — Persist sessions to SQLite so they survive server restarts.
+- **Server-side session storage** — Persist sessions to **PostgreSQL** (stroke lists as `JSONB` columns) so they survive server restarts. Redis buffers live session state; PostgreSQL is the durable record.
 
 ---
 
