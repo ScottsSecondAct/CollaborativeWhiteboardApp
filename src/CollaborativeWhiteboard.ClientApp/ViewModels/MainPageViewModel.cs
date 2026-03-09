@@ -1,72 +1,135 @@
-﻿using Microsoft.AspNetCore.SignalR.Client;
-using System.Collections.ObjectModel;
+using CollaborativeWhiteboard.ClientApp.Models;
+using CollaborativeWhiteboard.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Maui.Controls;
+using Microsoft.Maui.Graphics;
+using System;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace CollaborativeWhiteboard.ClientApp.ViewModels;
 
 public partial class MainPageViewModel : ObservableObject
+{
+    private readonly DrawingService _drawingService;
+    private readonly MessagingService _messagingService;
+
+    public string UserId { get; } = Guid.NewGuid().ToString("N")[..8];
+
+    [ObservableProperty]
+    string _hubUrl = "http://localhost:5000/drawingHub";
+
+    [ObservableProperty]
+    bool _isConnected;
+
+    [ObservableProperty]
+    Color _selectedColor = Colors.Black;
+
+    [ObservableProperty]
+    float _strokeSize = 4f;
+
+    [ObservableProperty]
+    string _messageText = string.Empty;
+
+    public ObservableCollection<ChatMessageViewModel> Messages { get; } = new();
+
+    public event Action<string, string, object>? DrawActionReceived;
+
+    public MainPageViewModel(DrawingService drawingService, MessagingService messagingService)
     {
-        private readonly HubConnection _hubConnection;
+        _drawingService = drawingService;
+        _messagingService = messagingService;
 
-        [ObservableProperty]
-        string _name;
+        _drawingService.OnDrawActionReceived += (userId, actionType, actionData) =>
+            DrawActionReceived?.Invoke(userId, actionType, actionData);
+    }
 
-        [ObservableProperty]
-        string _message;
+    [RelayCommand]
+    async Task Connect()
+    {
+        if (IsConnected) return;
 
-        [ObservableProperty]
-        ObservableCollection<string> _messages;
+        await _drawingService.InitializeAsync(HubUrl);
+        IsConnected = _drawingService.IsConnected;
 
-        [ObservableProperty]
-        bool _isConnected;
-
-        public MainPageViewModel()
+        if (IsConnected)
         {
-            _hubConnection = new HubConnectionBuilder()
-                .WithUrl($"https://yoururlhere.com/DrawingHub")
-                .Build();
-
-            Messages ??= new ObservableCollection<string>();
-
-            _hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
-            {
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    Messages.Add($"{user} says {message}");
-                });
-            });
-        }
-
-        [RelayCommand]
-        async Task Connect()
-        {
-            if (_hubConnection.State == HubConnectionState.Connecting ||
-                _hubConnection.State == HubConnectionState.Connected) return;
-
-            await _hubConnection.StartAsync();
-
-            IsConnected = true;
-        }
-
-        [RelayCommand]
-        async Task Disconnect()
-        {
-
-            if (_hubConnection.State == HubConnectionState.Disconnected) return;
-
-            await _hubConnection.StopAsync();
-
-            IsConnected = false;
-        }
-
-        [RelayCommand]
-        async Task SendMessage()
-        {
-            if (string.IsNullOrWhiteSpace(Name) || string.IsNullOrWhiteSpace(Message)) return;
-
-            await _hubConnection.InvokeAsync("SendMessage", Name, Message);
-
-            Message = string.Empty;
+            _messagingService.Attach(_drawingService.Connection!);
+            _messagingService.OnChatMessageReceived += OnChatMessageReceived;
         }
     }
+
+    [RelayCommand]
+    async Task Disconnect()
+    {
+        if (!IsConnected) return;
+
+        _messagingService.OnChatMessageReceived -= OnChatMessageReceived;
+        await _drawingService.StopAsync();
+        IsConnected = false;
+    }
+
+    [RelayCommand]
+    void SelectColor(string colorHex) => SelectedColor = Color.FromArgb(colorHex);
+
+    [RelayCommand]
+    void SelectSize(string size) => StrokeSize = size switch
+    {
+        "S" => 2f,
+        "L" => 10f,
+        _   => 4f,
+    };
+
+    [RelayCommand]
+    async Task SendMessage()
+    {
+        var text = MessageText.Trim();
+        if (string.IsNullOrEmpty(text) || !IsConnected) return;
+
+        MessageText = string.Empty;
+
+        Messages.Add(new ChatMessageViewModel
+        {
+            UserId = UserId,
+            Text = text,
+            SentAt = DateTimeOffset.UtcNow,
+            IsOwnMessage = true,
+        });
+
+        await _messagingService.SendChatMessageAsync(UserId, text);
+    }
+
+    public async Task SendStrokeAsync(DrawStroke stroke)
+    {
+        if (!IsConnected) return;
+
+        var c = stroke.Color;
+        var colorHex = $"#{(int)(c.Alpha * 255):X2}{(int)(c.Red * 255):X2}{(int)(c.Green * 255):X2}{(int)(c.Blue * 255):X2}";
+
+        var dto = new DrawStrokeDto(
+            UserId: UserId,
+            ColorHex: colorHex,
+            StrokeSize: stroke.StrokeSize,
+            Points: stroke.Points.Select(p => new PointDto(p.X, p.Y)).ToList());
+
+        var json = JsonSerializer.Serialize(dto);
+        await _drawingService.SendDrawAction(UserId, "draw", json);
+    }
+
+    private void OnChatMessageReceived(string userId, string text, DateTimeOffset sentAt)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            Messages.Add(new ChatMessageViewModel
+            {
+                UserId = userId,
+                Text = text,
+                SentAt = sentAt,
+                IsOwnMessage = false,
+            });
+        });
+    }
+}

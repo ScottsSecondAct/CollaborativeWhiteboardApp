@@ -7,9 +7,6 @@
     Shell.FlyoutBehavior="Disabled"
     Title="CollaborativeWhiteboard">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate views:MainPage}"
-        Route="MainPage" />
+    <!-- Pages are registered via DI and added in AppShell.xaml.cs -->
 
 </Shell>

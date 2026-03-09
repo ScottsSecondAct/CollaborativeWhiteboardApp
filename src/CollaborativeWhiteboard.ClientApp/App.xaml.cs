@@ -1,11 +1,13 @@
-﻿namespace CollaborativeWhiteboard.ClientApp;
+﻿using CollaborativeWhiteboard;
+
+namespace CollaborativeWhiteboard.ClientApp;
 
 public partial class App : Application
 {
-	public App()
+	public App(AppShell shell)
 	{
 		InitializeComponent();
 
-		MainPage = new AppShell();
+		MainPage = shell;
 	}
 }

@@ -11,6 +11,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CollaborativeWhiteboard.Ser
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CollaborativeWhiteboard.ClientApp.Test", "tests\CollaborativeWhiteboard.ClientApp.Test\CollaborativeWhiteboard.ClientApp.Test.csproj", "{68A9807A-B7B8-498A-9D81-1B7E891CE7EC}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{EED40078-5AF9-4391-9A86-297D992D99FD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CollaborativeWhiteboard.Core", "src\CollaborativeWhiteboard.Core\CollaborativeWhiteboard.Core.csproj", "{DB28D39E-81A3-4D45-83EC-DEDEF7D97CD6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,11 +39,18 @@ Global
 		{68A9807A-B7B8-498A-9D81-1B7E891CE7EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{68A9807A-B7B8-498A-9D81-1B7E891CE7EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{68A9807A-B7B8-498A-9D81-1B7E891CE7EC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB28D39E-81A3-4D45-83EC-DEDEF7D97CD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB28D39E-81A3-4D45-83EC-DEDEF7D97CD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB28D39E-81A3-4D45-83EC-DEDEF7D97CD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB28D39E-81A3-4D45-83EC-DEDEF7D97CD6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {43F6495A-611B-4F46-B1E8-9C068512AD18}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{DB28D39E-81A3-4D45-83EC-DEDEF7D97CD6} = {EED40078-5AF9-4391-9A86-297D992D99FD}
 	EndGlobalSection
 EndGlobal

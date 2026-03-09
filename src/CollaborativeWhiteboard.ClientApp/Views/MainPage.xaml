@@ -1,8 +1,251 @@
-﻿<!-- MainPage.xaml -->
+<!-- MainPage.xaml -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:converters="clr-namespace:CollaborativeWhiteboard.ClientApp.Converters"
+             xmlns:models="clr-namespace:CollaborativeWhiteboard.ClientApp.Models"
              x:Class="CollaborativeWhiteboard.ClientApp.Views.MainPage">
-    <Grid>
-        <GraphicsView x:Name="DrawingCanvas" />
+
+    <ContentPage.Resources>
+        <converters:InvertedBoolConverter x:Key="InvertedBool" />
+
+        <Style x:Key="ColorSwatch" TargetType="Button">
+            <Setter Property="WidthRequest" Value="36" />
+            <Setter Property="HeightRequest" Value="36" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderWidth" Value="2" />
+            <Setter Property="BorderColor" Value="Transparent" />
+            <Setter Property="Text" Value="" />
+        </Style>
+
+        <Style x:Key="SizeButton" TargetType="Button">
+            <Setter Property="WidthRequest" Value="40" />
+            <Setter Property="HeightRequest" Value="36" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#E0E0E0, Dark=#333333}" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=Black, Dark=White}" />
+        </Style>
+
+        <Style x:Key="ChatBubbleBase" TargetType="Border">
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="MaximumWidthRequest" Value="280" />
+            <Setter Property="StrokeThickness" Value="0" />
+            <Setter Property="StrokeShape" Value="RoundRectangle 12" />
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+        <!-- Connection bar -->
+        <Grid Grid.Row="0"
+              ColumnDefinitions="*,Auto,Auto"
+              Padding="8,6"
+              BackgroundColor="{AppThemeBinding Light=#F3F3F3, Dark=#1E1E1E}">
+
+            <Entry Grid.Column="0"
+                   Text="{Binding HubUrl}"
+                   Placeholder="Hub URL"
+                   IsEnabled="{Binding IsConnected, Converter={StaticResource InvertedBool}}"
+                   VerticalOptions="Center"
+                   Margin="0,0,6,0" />
+
+            <Label Grid.Column="1"
+                   Text="Connected"
+                   TextColor="Green"
+                   IsVisible="{Binding IsConnected}"
+                   VerticalOptions="Center"
+                   FontSize="13"
+                   Margin="0,0,8,0" />
+
+            <Label Grid.Column="1"
+                   Text="Disconnected"
+                   TextColor="Gray"
+                   IsVisible="{Binding IsConnected, Converter={StaticResource InvertedBool}}"
+                   VerticalOptions="Center"
+                   FontSize="13"
+                   Margin="0,0,8,0" />
+
+            <Button Grid.Column="2"
+                    Text="Connect"
+                    Command="{Binding ConnectCommand}"
+                    IsVisible="{Binding IsConnected, Converter={StaticResource InvertedBool}}"
+                    WidthRequest="100"
+                    VerticalOptions="Center" />
+
+            <Button Grid.Column="2"
+                    Text="Disconnect"
+                    Command="{Binding DisconnectCommand}"
+                    IsVisible="{Binding IsConnected}"
+                    WidthRequest="100"
+                    VerticalOptions="Center" />
+
+        </Grid>
+
+        <!-- Drawing toolbar -->
+        <HorizontalStackLayout Grid.Row="1"
+                               Spacing="8"
+                               Padding="8,6"
+                               BackgroundColor="{AppThemeBinding Light=#FAFAFA, Dark=#252525}">
+
+            <!-- Active color preview -->
+            <BoxView WidthRequest="36"
+                     HeightRequest="36"
+                     CornerRadius="4"
+                     Color="{Binding SelectedColor}"
+                     VerticalOptions="Center" />
+
+            <!-- Color swatches -->
+            <Button Style="{StaticResource ColorSwatch}"
+                    BackgroundColor="Black"
+                    Command="{Binding SelectColorCommand}"
+                    CommandParameter="#FF000000" />
+
+            <Button Style="{StaticResource ColorSwatch}"
+                    BackgroundColor="Red"
+                    Command="{Binding SelectColorCommand}"
+                    CommandParameter="#FFFF0000" />
+
+            <Button Style="{StaticResource ColorSwatch}"
+                    BackgroundColor="#2196F3"
+                    Command="{Binding SelectColorCommand}"
+                    CommandParameter="#FF2196F3" />
+
+            <Button Style="{StaticResource ColorSwatch}"
+                    BackgroundColor="#4CAF50"
+                    Command="{Binding SelectColorCommand}"
+                    CommandParameter="#FF4CAF50" />
+
+            <Button Style="{StaticResource ColorSwatch}"
+                    BackgroundColor="#FF9800"
+                    Command="{Binding SelectColorCommand}"
+                    CommandParameter="#FFFF9800" />
+
+            <!-- Eraser (white swatch with border) -->
+            <Button Style="{StaticResource ColorSwatch}"
+                    BackgroundColor="White"
+                    BorderColor="LightGray"
+                    BorderWidth="2"
+                    Command="{Binding SelectColorCommand}"
+                    CommandParameter="#FFFFFFFF" />
+
+            <!-- Separator -->
+            <BoxView WidthRequest="1"
+                     HeightRequest="28"
+                     Color="LightGray"
+                     VerticalOptions="Center"
+                     Margin="4,0" />
+
+            <!-- Stroke size buttons -->
+            <Button Style="{StaticResource SizeButton}"
+                    Text="S"
+                    FontSize="12"
+                    Command="{Binding SelectSizeCommand}"
+                    CommandParameter="S" />
+
+            <Button Style="{StaticResource SizeButton}"
+                    Text="M"
+                    FontSize="14"
+                    Command="{Binding SelectSizeCommand}"
+                    CommandParameter="M" />
+
+            <Button Style="{StaticResource SizeButton}"
+                    Text="L"
+                    FontSize="18"
+                    Command="{Binding SelectSizeCommand}"
+                    CommandParameter="L" />
+
+        </HorizontalStackLayout>
+
+        <!-- Drawing canvas -->
+        <GraphicsView Grid.Row="2" x:Name="DrawingCanvas" />
+
+        <!-- Chat panel -->
+        <Grid Grid.Row="3"
+              RowDefinitions="Auto,*,Auto"
+              HeightRequest="220"
+              BackgroundColor="{AppThemeBinding Light=#F8F8F8, Dark=#1A1A1A}">
+
+            <!-- Header -->
+            <Label Grid.Row="0"
+                   Text="Chat"
+                   FontAttributes="Bold"
+                   FontSize="13"
+                   Padding="10,5"
+                   BackgroundColor="{AppThemeBinding Light=#E8E8E8, Dark=#222222}" />
+
+            <!-- Message history -->
+            <CollectionView Grid.Row="1"
+                            ItemsSource="{Binding Messages}"
+                            ItemsUpdatingScrollMode="KeepLastItemInView">
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:ChatMessageViewModel">
+                        <Grid Padding="8,3">
+
+                            <!-- Own message: right-aligned -->
+                            <Border Style="{StaticResource ChatBubbleBase}"
+                                    BackgroundColor="{AppThemeBinding Light=#DCF8C6, Dark=#1E5C2E}"
+                                    IsVisible="{Binding IsOwnMessage}"
+                                    HorizontalOptions="End">
+                                <VerticalStackLayout Spacing="2">
+                                    <Label Text="{Binding Text}"
+                                           FontSize="14" />
+                                    <Label Text="{Binding TimeDisplay}"
+                                           FontSize="10"
+                                           TextColor="Gray"
+                                           HorizontalOptions="End" />
+                                </VerticalStackLayout>
+                            </Border>
+
+                            <!-- Remote message: left-aligned -->
+                            <Border Style="{StaticResource ChatBubbleBase}"
+                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                                    IsVisible="{Binding IsOwnMessage, Converter={StaticResource InvertedBool}}"
+                                    HorizontalOptions="Start">
+                                <VerticalStackLayout Spacing="2">
+                                    <Label Text="{Binding UserId}"
+                                           FontSize="10"
+                                           TextColor="Gray"
+                                           FontAttributes="Bold" />
+                                    <Label Text="{Binding Text}"
+                                           FontSize="14" />
+                                    <Label Text="{Binding TimeDisplay}"
+                                           FontSize="10"
+                                           TextColor="Gray" />
+                                </VerticalStackLayout>
+                            </Border>
+
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+
+            </CollectionView>
+
+            <!-- Message input bar -->
+            <Grid Grid.Row="2"
+                  ColumnDefinitions="*,Auto"
+                  Padding="8,5"
+                  BackgroundColor="{AppThemeBinding Light=#EFEFEF, Dark=#1E1E1E}">
+
+                <Entry Grid.Column="0"
+                       Text="{Binding MessageText}"
+                       Placeholder="Type a message..."
+                       IsEnabled="{Binding IsConnected}"
+                       ReturnCommand="{Binding SendMessageCommand}"
+                       ReturnType="Send"
+                       VerticalOptions="Center" />
+
+                <Button Grid.Column="1"
+                        Text="Send"
+                        Command="{Binding SendMessageCommand}"
+                        IsEnabled="{Binding IsConnected}"
+                        WidthRequest="70"
+                        VerticalOptions="Center"
+                        Margin="6,0,0,0" />
+
+            </Grid>
+
+        </Grid>
+
     </Grid>
 </ContentPage>
