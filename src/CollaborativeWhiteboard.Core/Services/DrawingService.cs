@@ -20,7 +20,7 @@ public class DrawingService
 
     public bool IsConnected => _connection?.State == HubConnectionState.Connected;
 
-    internal IHubConnectionWrapper? Connection => _connection;
+    public IHubConnectionWrapper? Connection => _connection;
 
     public event Action<string, string, object>? OnDrawActionReceived;
 
