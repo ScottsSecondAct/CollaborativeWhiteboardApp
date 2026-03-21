@@ -87,7 +87,7 @@ User sends a message
 
 ### Prerequisites
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 - .NET MAUI workload: `dotnet workload install maui`
 
 ### Run the server
