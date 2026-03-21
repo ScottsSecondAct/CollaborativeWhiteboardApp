@@ -1,8 +1,10 @@
 # Collaborative Whiteboard App
 
+[![Build](https://github.com/ScottsSecondAct/CollaborativeWhiteboardApp/actions/workflows/build.yml/badge.svg)](https://github.com/ScottsSecondAct/CollaborativeWhiteboardApp/actions/workflows/build.yml)
+
 A cross-platform real-time collaborative whiteboard with integrated chat, built with .NET MAUI and ASP.NET Core SignalR.
 
-## Current Release — v0.1.0
+## Current Release — v0.2.0
 
 ### What's working
 
@@ -127,13 +129,8 @@ docker build -t collaborative-whiteboard-server src/CollaborativeWhiteboard.Serv
 
 ## Roadmap
 
-Features planned for future releases:
+See [ROADMAP.md](ROADMAP.md) for the full plan, including the authentication & identity design, encryption strategy, collaborative state (late-join canvas sync, cursors, presence), PostgreSQL + Redis datastore architecture, and DevOps improvements.
 
-- **User roles** — Host, Editor, Viewer permissions
-- **Undo / redo** — action event log with replay
-- **Shape tools** — rectangles, ellipses, lines, text
-- **File export** — image, PDF, SVG
-- **Session persistence** — save and restore whiteboard state
-- **Offline delta-sync** — queue local changes and replay on reconnect
-- **Audio / video** — WebRTC or Azure Communication Services integration
-- **Handwriting and sketch recognition**
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on pull requests and the development workflow. This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). To report a security vulnerability, see [SECURITY.md](SECURITY.md).
