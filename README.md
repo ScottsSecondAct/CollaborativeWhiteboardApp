@@ -28,9 +28,9 @@ A cross-platform real-time collaborative whiteboard with integrated chat, built 
 
 ```
 src/
-  CollaborativeWhiteboard.Server        # ASP.NET Core 8 — SignalR hub
+  CollaborativeWhiteboard.Server        # ASP.NET Core 9 — SignalR hub
   CollaborativeWhiteboard.ClientApp     # .NET MAUI — iOS, Android, macOS, Windows
-  CollaborativeWhiteboard.Core          # net8.0 class library — shared service layer
+  CollaborativeWhiteboard.Core          # net9.0 class library — shared service layer
 tests/
   CollaborativeWhiteboard.Server.Test   # 13 xUnit tests for DrawingHub
   CollaborativeWhiteboard.ClientApp.Test # 17 xUnit tests for DrawingService / MessagingService
